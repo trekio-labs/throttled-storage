@@ -1,6 +1,6 @@
 {
   "name": "@trekio-labs/throttled-storage",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Coalesces bursts of storage writes into one backend call per interval. Drop-in for zustand persist over AsyncStorage or localStorage.",
   "keywords": [
     "storage",
@@ -12,7 +12,8 @@
     "localstorage",
     "react-native",
     "performance",
-    "anr"
+    "anr",
+    "mmkv"
   ],
   "license": "MIT",
   "author": "Trekio Labs",
@@ -56,7 +57,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
+    "bench": "npm run build && node bench/write-rate.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

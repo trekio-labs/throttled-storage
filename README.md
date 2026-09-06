@@ -25,21 +25,68 @@ persist(storeDefinition, {
 npm install @trekio-labs/throttled-storage
 ```
 
+## Measured
+
+```
+6s of updates every 20ms, 2ms simulated write cost
+
+                    updates   writes   written    caller blocked
+zustand default     131       131      0.4 MB     1925 ms
+throttled (200ms)   191       37       0.2 MB     14 ms
+```
+
+Reproduce with `npm run bench`. Read the last column first: the default spent
+1.9 of 6 seconds inside `setItem`, on the thread your UI runs on. That is also
+why it processed *fewer* updates than the throttled run — it was too busy
+writing to keep up with its own input.
+
+Be honest about when this helps. The saving is roughly **update rate ÷ flush
+interval**. A store touched twice a minute gains nothing from a 1s interval; a
+store touched on every sensor reading gains a lot. If your writes are already
+slower than your flush interval, you do not need this package.
+
 ## Use
 
 ```ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createJSONStorage, persist } from 'zustand/middleware';
-import { createThrottledStorage } from '@trekio-labs/throttled-storage';
+import { persist } from 'zustand/middleware';
+import { createThrottledJSONStorage } from '@trekio-labs/throttled-storage';
 
-const storage = createThrottledStorage(AsyncStorage, {
+const storage = createThrottledJSONStorage(AsyncStorage, {
   intervalMs: 1000,
   onError: (error, key) => reportToCrashlytics(error, { key }),
 });
 
 persist(storeDefinition, {
   name: 'active-trek',
-  storage: createJSONStorage(() => storage),
+  storage, // matches zustand's PersistStorage; no createJSONStorage needed
+});
+```
+
+`createThrottledJSONStorage` keeps buffered state as an object and stringifies
+once at flush time, so a burst costs one serialization rather than one per
+mutation. Wrapping `createJSONStorage` around the plain `createThrottledStorage`
+also works, but serializes on every write.
+
+### With MMKV
+
+```ts
+import { MMKV } from 'react-native-mmkv';
+import { createThrottledJSONStorage, fromMMKV } from '@trekio-labs/throttled-storage';
+
+const storage = createThrottledJSONStorage(fromMMKV(new MMKV()), { intervalMs: 1000 });
+```
+
+### Corrupted values
+
+A value that fails to parse resolves as `null` rather than throwing, so a
+truncated write degrades to the store's defaults instead of breaking hydration
+on launch. Pass `onParseError` to find out when it happens — without it the
+corruption is silent.
+
+```ts
+const storage = createThrottledJSONStorage(AsyncStorage, {
+  onParseError: (error, key) => reportToCrashlytics(error, { key }),
 });
 ```
 
@@ -70,6 +117,20 @@ window.addEventListener('pagehide', () => void storage.flush());
 - **`flush()` never rejects.** Errors go to `onError`. A persistence layer that throws into your unload handler is worse than one that reports and continues.
 
 ## API
+
+### `createThrottledJSONStorage(backend, options?)`
+
+Everything `createThrottledStorage` does, plus JSON encoding, shaped to match
+zustand's `PersistStorage<S>`. Takes the options below plus `replacer`,
+`reviver` and `onParseError`.
+
+One `JSON.stringify` gotcha, not specific to this package: `stringify` calls a
+value's own `toJSON` *before* the replacer sees it, so a `Date` arrives at your
+replacer already a string. Types without `toJSON` (`Set`, `Map`) reach it intact.
+
+### `fromMMKV(mmkv)`
+
+Adapts `react-native-mmkv`, which names its methods `getString`/`set`/`delete`.
 
 ### `createThrottledStorage(backend, options?)`
 

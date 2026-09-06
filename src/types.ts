@@ -56,3 +56,50 @@ export interface ThrottledStorage {
   /** Number of keys waiting to be written. Diagnostics and tests. */
   pendingCount(): number;
 }
+
+/**
+ * What zustand's `persist` stores: the state plus the migration version. Named
+ * to match zustand's own `StorageValue`, and declared here rather than imported
+ * so this package stays dependency-free.
+ */
+export interface StorageValue<S> {
+  state: S;
+  version?: number;
+}
+
+export interface ThrottledJSONStorageOptions extends ThrottledStorageOptions {
+  /** Passed to `JSON.stringify` when a buffered value is written. */
+  replacer?: (this: unknown, key: string, value: unknown) => unknown;
+
+  /** Passed to `JSON.parse` when a value is read back. */
+  reviver?: (this: unknown, key: string, value: unknown) => unknown;
+
+  /**
+   * Called when a stored value cannot be parsed. The read then resolves to
+   * `null`, so the store falls back to its defaults instead of throwing during
+   * hydration — a corrupted value should degrade the app, not brick its launch.
+   *
+   * Without a handler the corruption is silent, so supply one if you want to
+   * know it happened.
+   */
+  onParseError?: (error: Error, key: string) => void;
+}
+
+/**
+ * Structurally compatible with zustand's `PersistStorage<S>`, so it can be
+ * passed straight to `persist` as `storage`.
+ */
+export interface ThrottledJSONStorage<S> {
+  getItem(name: string): Promise<StorageValue<S> | null>;
+  setItem(name: string, value: StorageValue<S>): Promise<void>;
+  removeItem(name: string): Promise<void>;
+  flush(): Promise<void>;
+  pendingCount(): number;
+}
+
+/** The slice of `react-native-mmkv`'s API that {@link fromMMKV} needs. */
+export interface MMKVLike {
+  getString(key: string): string | undefined;
+  set(key: string, value: string): void;
+  delete(key: string): void;
+}
