@@ -1,0 +1,66 @@
+{
+  "name": "@trekio-labs/throttled-storage",
+  "version": "0.1.0",
+  "description": "Coalesces bursts of storage writes into one backend call per interval. Drop-in for zustand persist over AsyncStorage or localStorage.",
+  "keywords": [
+    "storage",
+    "throttle",
+    "debounce",
+    "zustand",
+    "persist",
+    "asyncstorage",
+    "localstorage",
+    "react-native",
+    "performance",
+    "anr"
+  ],
+  "license": "MIT",
+  "author": "Trekio Labs",
+  "homepage": "https://github.com/trekio-labs/throttled-storage#readme",
+  "bugs": "https://github.com/trekio-labs/throttled-storage/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/trekio-labs/throttled-storage.git"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "npm run clean && npm run build:esm && npm run build:cjs",
+    "build:esm": "tsc -p tsconfig.build.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json && node scripts/fixup-cjs.mjs",
+    "typecheck": "tsc --noEmit",
+    "prepare": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
